@@ -38,7 +38,7 @@ export function ProgressCircle({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.1)"
+            stroke="hsl(210, 30%, 80%)"
             strokeWidth={strokeWidth}
           />
           {/* Progress circle */}
@@ -52,7 +52,7 @@ export function ProgressCircle({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-500 ease-out"
+            className="transition-all duration-base ease-out"
           />
         </svg>
         
@@ -65,9 +65,9 @@ export function ProgressCircle({
           )}
         </div>
       </div>
-      
+
       {label && (
-        <span className="text-sm font-medium text-text-secondary text-center">
+        <span className="text-caption font-medium text-text-secondary text-center">
           {label}
         </span>
       )}

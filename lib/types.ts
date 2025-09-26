@@ -1,18 +1,15 @@
-export interface User {
-  userId: string;
-  walletAddress?: string;
-  preferences: UserPreferences;
-  subscriptionStatus: 'free' | 'premium';
-  createdAt: Date;
+export interface MoodOption {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
 }
 
-export interface UserPreferences {
-  voiceType: 'male' | 'female';
-  backgroundSounds: string[];
-  defaultDuration: number;
-  notifications: boolean;
-  sleepMode: boolean;
-  volume: number;
+export interface OutcomeOption {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
 }
 
 export interface MeditationSession {
@@ -23,14 +20,23 @@ export interface MeditationSession {
   duration: number;
   moodTags: string[];
   outcomeTags: string[];
-  audioUrl?: string;
+  audioUrl: string;
+  script?: string;
+  createdAt: Date;
+}
+
+export interface User {
+  userId: string;
+  walletAddress: string;
+  preferences?: any;
+  subscriptionStatus?: string;
   createdAt: Date;
 }
 
 export interface Goal {
   goalId: string;
   userId: string;
-  metric: 'sessions_per_week' | 'minutes_per_day' | 'streak_days';
+  metric: string;
   targetValue: number;
   startDate: Date;
   endDate: Date;
@@ -41,15 +47,7 @@ export interface ProgressLog {
   userId: string;
   date: Date;
   meditationMinutes: number;
-  moodScore: number; // 1-10 scale
+  moodScore: number;
   notes?: string;
 }
 
-export interface MoodOption {
-  id: string;
-  label: string;
-  emoji: string;
-  color: string;
-}
-
-export type Theme = 'default' | 'celo' | 'solana' | 'base' | 'coinbase';

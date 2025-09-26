@@ -6,6 +6,10 @@ import { MoodSelector, currentMoods, desiredOutcomes } from './components/MoodSe
 import { AudioPlayer } from './components/AudioPlayer';
 import { WalletConnect } from './components/WalletConnect';
 import { Sparkles, Clock, Target } from 'lucide-react';
+import { generateMeditationScript, generateMeditationTitle } from '../lib/openai';
+import { generateAudioFromText } from '../lib/elevenlabs';
+import { createMeditationSession } from '../lib/database';
+import { useWallet } from '../lib/hooks/useWallet';
 
 export default function HomePage() {
   const [currentMood, setCurrentMood] = useState<string>('');
@@ -13,23 +17,61 @@ export default function HomePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [meditationTitle, setMeditationTitle] = useState('');
+  const [audioUrl, setAudioUrl] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  const { address, isConnected } = useWallet();
 
   const handleGenerateMeditation = async () => {
     if (!currentMood || !desiredOutcome) return;
+    if (!isConnected || !address) {
+      setError('Please connect your wallet first');
+      return;
+    }
 
     setIsGenerating(true);
-    
-    // Simulate AI generation
-    const moodLabel = currentMoods.find(m => m.id === currentMood)?.label || '';
-    const outcomeLabel = desiredOutcomes.find(o => o.id === desiredOutcome)?.label || '';
-    
-    setMeditationTitle(`${moodLabel} to ${outcomeLabel} Meditation`);
-    
-    // Simulate API call delay
-    setTimeout(() => {
+    setError('');
+
+    try {
+      // Generate meditation title
+      const title = await generateMeditationTitle(currentMood, desiredOutcome);
+      setMeditationTitle(title);
+
+      // Generate meditation script
+      const moodLabel = currentMoods.find(m => m.id === currentMood)?.label || '';
+      const outcomeLabel = desiredOutcomes.find(o => o.id === desiredOutcome)?.label || '';
+
+      const script = await generateMeditationScript({
+        mood: moodLabel,
+        outcome: outcomeLabel,
+        duration: 15, // 15 minutes default
+        userName: 'you', // Could be personalized later
+        voice: 'neutral',
+      });
+
+      // Generate audio from script
+      const audioDataUrl = await generateAudioFromText(script, 'neutral');
+      setAudioUrl(audioDataUrl);
+
+      // Save to database
+      await createMeditationSession({
+        userId: address,
+        generated: true,
+        type: 'mood-based',
+        duration: 15 * 60, // 15 minutes in seconds
+        moodTags: [currentMood],
+        outcomeTags: [desiredOutcome],
+        audioUrl: audioDataUrl,
+        script,
+      });
+
       setIsGenerating(false);
       setShowPlayer(true);
-    }, 3000);
+    } catch (err) {
+      console.error('Error generating meditation:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate meditation');
+      setIsGenerating(false);
+    }
   };
 
   const canGenerate = currentMood && desiredOutcome;
@@ -41,16 +83,22 @@ export default function HomePage() {
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-4">
             <div className="w-32 h-32 rounded-full meditation-orb flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 rounded-full bg-surface/20 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-surface" />
               </div>
             </div>
           </div>
-          
-          <h1 className="text-3xl font-bold text-text-primary">CalmMind AI</h1>
-          <p className="text-text-secondary">Your personal AI guide to tranquility and better sleep</p>
-          
+
+          <h1 className="text-display font-bold text-text-primary">CalmMind AI</h1>
+          <p className="text-body text-text-secondary">Your personal AI guide to tranquility and better sleep</p>
+
           <WalletConnect />
+
+          {error && (
+            <div className="glass-card p-4 border-red-500/20 bg-red-500/10">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
         </div>
 
         {!showPlayer ? (
@@ -76,7 +124,7 @@ export default function HomePage() {
               <button
                 onClick={handleGenerateMeditation}
                 disabled={!canGenerate || isGenerating}
-                className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-200 ${
+                className={`w-full py-4 rounded-lg font-semibold text-lg transition-all duration-base ${
                   canGenerate && !isGenerating
                     ? 'btn-primary'
                     : 'bg-surface/40 text-text-secondary cursor-not-allowed'
@@ -84,7 +132,7 @@ export default function HomePage() {
               >
                 {isGenerating ? (
                   <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-surface/30 border-t-surface rounded-full animate-spin"></div>
                     <span>Generating Your Meditation...</span>
                   </div>
                 ) : (
@@ -101,12 +149,12 @@ export default function HomePage() {
               <div className="glass-card p-4 text-center">
                 <Clock className="w-6 h-6 text-accent mx-auto mb-2" />
                 <div className="text-2xl font-bold text-text-primary">5-30</div>
-                <div className="text-sm text-text-secondary">Minutes</div>
+                <div className="text-caption text-text-secondary">Minutes</div>
               </div>
               <div className="glass-card p-4 text-center">
                 <Target className="w-6 h-6 text-accent mx-auto mb-2" />
                 <div className="text-2xl font-bold text-text-primary">100%</div>
-                <div className="text-sm text-text-secondary">Personalized</div>
+                <div className="text-caption text-text-secondary">Personalized</div>
               </div>
             </div>
           </div>
@@ -115,6 +163,7 @@ export default function HomePage() {
             <AudioPlayer
               title={meditationTitle}
               duration={900} // 15 minutes
+              audioUrl={audioUrl}
               isGenerating={isGenerating}
               onPlayComplete={() => {
                 // Handle completion - could show progress update, etc.
@@ -127,6 +176,8 @@ export default function HomePage() {
                 setCurrentMood('');
                 setDesiredOutcome('');
                 setMeditationTitle('');
+                setAudioUrl('');
+                setError('');
               }}
               className="w-full btn-secondary"
             >
