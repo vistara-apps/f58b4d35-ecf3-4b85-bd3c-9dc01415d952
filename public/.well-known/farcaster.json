@@ -1,0 +1,30 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": {
+    "version": "1",
+    "name": "CalmMind AI",
+    "subtitle": "Built with Zara",
+    "description": "CalmMind AI is a Base Mini App built with Zara.",
+    "iconUrl": "https://0co.to/images/zara-2.png",
+    "homeUrl": "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app",
+    "splashImageUrl": "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app/splash.png",
+    "splashBackgroundColor": "#000000",
+    "heroImageUrl": "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app/image.png",
+    "tagline": "CalmMind AI",
+    "screenshotUrls": [
+      "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app/screenshot.png",
+      "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app/screenshot.png"
+    ],
+    "primaryCategory": "social",
+    "tags": [
+      "base",
+      "miniapp",
+      "onchainkit"
+    ],
+    "webhookUrl": "https://f58b4d35ecf34b85bd3c9dc01415d952-l0vn.vercel.app/api/webhook"
+  }
+}
