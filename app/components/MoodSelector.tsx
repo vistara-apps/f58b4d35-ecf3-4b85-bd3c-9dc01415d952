@@ -25,10 +25,10 @@ export function MoodSelector({ title, options, selectedMood, onMoodSelect }: Moo
           <button
             key={mood.id}
             onClick={() => onMoodSelect(mood.id)}
-            className={`p-4 rounded-xl border transition-all duration-200 ${
+            className={`p-4 rounded-lg border transition-all duration-base ${
               selectedMood === mood.id
-                ? 'border-accent bg-accent/10 shadow-lg'
-                : 'border-white/10 bg-surface/40 hover:bg-surface/60'
+                ? 'border-accent bg-accent/10 shadow-card'
+                : 'border-primary/10 bg-surface hover:bg-surface/80'
             }`}
           >
             <div className="text-2xl mb-2">{mood.emoji}</div>

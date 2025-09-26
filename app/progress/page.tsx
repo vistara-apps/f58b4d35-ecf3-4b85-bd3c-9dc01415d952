@@ -1,152 +1,173 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { AppShell } from '../components/AppShell';
 import { ProgressCircle } from '../components/ProgressCircle';
-import { Calendar, TrendingUp, Award, Target } from 'lucide-react';
+import { WalletConnect } from '../components/WalletConnect';
+import { useWallet } from '../../lib/hooks/useWallet';
+import { getUserSessions } from '../../lib/database';
+import { MeditationSession } from '../../lib/types';
+import { Calendar, Target, TrendingUp, Clock, Award } from 'lucide-react';
 
 export default function ProgressPage() {
-  // Mock data - in real app, this would come from user's meditation history
-  const stats = {
-    currentStreak: 7,
-    totalSessions: 42,
-    totalMinutes: 630,
-    weeklyGoal: 5,
-    completedThisWeek: 4,
-    moodImprovement: 85,
+  const { address, isConnected } = useWallet();
+  const [sessions, setSessions] = useState<MeditationSession[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isConnected && address) {
+      loadUserProgress();
+    }
+  }, [isConnected, address]);
+
+  const loadUserProgress = async () => {
+    if (!address) return;
+
+    setLoading(true);
+    try {
+      const userSessions = await getUserSessions(address);
+      setSessions(userSessions);
+    } catch (error) {
+      console.error('Error loading user progress:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentSessions = [
-    { date: '2024-01-15', duration: 15, mood: 'Calm', type: 'Sleep Meditation' },
-    { date: '2024-01-14', duration: 10, mood: 'Focused', type: 'Morning Focus' },
-    { date: '2024-01-13', duration: 20, mood: 'Relaxed', type: 'Anxiety Relief' },
-    { date: '2024-01-12', duration: 12, mood: 'Energized', type: 'Energy Renewal' },
-  ];
+  const totalMinutes = sessions.reduce((sum, session) => sum + (session.duration / 60), 0);
+  const totalSessions = sessions.length;
+  const averageSessionLength = totalSessions > 0 ? totalMinutes / totalSessions : 0;
 
-  const achievements = [
-    { id: 1, title: 'First Week', description: '7 day streak', earned: true },
-    { id: 2, title: 'Early Bird', description: '5 morning sessions', earned: true },
-    { id: 3, title: 'Night Owl', description: '10 sleep sessions', earned: false },
-    { id: 4, title: 'Zen Master', description: '50 total sessions', earned: false },
-  ];
+  // Calculate streak (simplified - consecutive days with sessions)
+  const getCurrentStreak = () => {
+    if (sessions.length === 0) return 0;
+
+    const sortedSessions = sessions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    let streak = 0;
+    let currentDate = new Date();
+
+    for (const session of sortedSessions) {
+      const sessionDate = new Date(session.createdAt);
+      const diffTime = currentDate.getTime() - sessionDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0 || diffDays === 1) {
+        streak++;
+        currentDate = sessionDate;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  const currentStreak = getCurrentStreak();
 
   return (
     <AppShell activeTab="progress">
       <div className="p-6 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-text-primary">Your Progress</h1>
-          <p className="text-text-secondary">Track your mindfulness journey</p>
+        <div className="text-center space-y-4">
+          <h1 className="text-display font-bold text-text-primary">Your Progress</h1>
+          <p className="text-body text-text-secondary">Track your meditation journey and achievements</p>
+
+          <WalletConnect />
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="glass-card p-4 text-center">
-            <div className="text-3xl font-bold text-accent mb-1">{stats.currentStreak}</div>
-            <div className="text-sm text-text-secondary">Day Streak</div>
+        {!isConnected ? (
+          <div className="text-center py-12">
+            <p className="text-body text-text-secondary">Connect your wallet to view your meditation progress</p>
           </div>
-          <div className="glass-card p-4 text-center">
-            <div className="text-3xl font-bold text-accent mb-1">{stats.totalSessions}</div>
-            <div className="text-sm text-text-secondary">Total Sessions</div>
-          </div>
-        </div>
-
-        {/* Progress Circles */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="text-center">
-            <ProgressCircle
-              value={stats.completedThisWeek}
-              max={stats.weeklyGoal}
-              label="Weekly Goal"
-              color="#8B5CF6"
-            />
-          </div>
-          <div className="text-center">
-            <ProgressCircle
-              value={stats.moodImprovement}
-              max={100}
-              label="Mood Improvement"
-              color="#3B82F6"
-            />
-          </div>
-        </div>
-
-        {/* Recent Sessions */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-text-primary flex items-center space-x-2">
-            <Calendar size={20} />
-            <span>Recent Sessions</span>
-          </h2>
-          
-          <div className="space-y-3">
-            {recentSessions.map((session, index) => (
-              <div key={index} className="glass-card p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-text-primary">{session.type}</div>
-                    <div className="text-sm text-text-secondary">{session.date}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-accent font-medium">{session.duration} min</div>
-                    <div className="text-sm text-text-secondary">{session.mood}</div>
-                  </div>
-                </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="glass-card p-4 text-center">
+                <Clock className="w-6 h-6 text-accent mx-auto mb-2" />
+                <div className="text-2xl font-bold text-text-primary">{Math.round(totalMinutes)}</div>
+                <div className="text-caption text-text-secondary">Total Minutes</div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Achievements */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-text-primary flex items-center space-x-2">
-            <Award size={20} />
-            <span>Achievements</span>
-          </h2>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {achievements.map((achievement) => (
-              <div
-                key={achievement.id}
-                className={`glass-card p-4 text-center ${
-                  achievement.earned ? 'border-accent/50' : 'opacity-60'
-                }`}
-              >
-                <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                  achievement.earned ? 'bg-accent text-white' : 'bg-surface/60 text-text-secondary'
-                }`}>
-                  <Award size={16} />
-                </div>
-                <div className="text-sm font-medium text-text-primary">{achievement.title}</div>
-                <div className="text-xs text-text-secondary">{achievement.description}</div>
+              <div className="glass-card p-4 text-center">
+                <Target className="w-6 h-6 text-accent mx-auto mb-2" />
+                <div className="text-2xl font-bold text-text-primary">{totalSessions}</div>
+                <div className="text-caption text-text-secondary">Sessions</div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Goal Setting */}
-        <div className="glass-card p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-text-primary flex items-center space-x-2">
-            <Target size={20} />
-            <span>Set New Goal</span>
-          </h3>
-          
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                Weekly Meditation Goal
-              </label>
-              <select className="w-full p-3 bg-surface/60 border border-white/10 rounded-lg text-text-primary">
-                <option value="3">3 sessions per week</option>
-                <option value="5" selected>5 sessions per week</option>
-                <option value="7">7 sessions per week (Daily)</option>
-              </select>
+              <div className="glass-card p-4 text-center">
+                <TrendingUp className="w-6 h-6 text-accent mx-auto mb-2" />
+                <div className="text-2xl font-bold text-text-primary">{Math.round(averageSessionLength)}</div>
+                <div className="text-caption text-text-secondary">Avg Minutes</div>
+              </div>
+
+              <div className="glass-card p-4 text-center">
+                <Award className="w-6 h-6 text-accent mx-auto mb-2" />
+                <div className="text-2xl font-bold text-text-primary">{currentStreak}</div>
+                <div className="text-caption text-text-secondary">Day Streak</div>
+              </div>
             </div>
-            
-            <button className="w-full btn-primary">
-              Update Goal
-            </button>
+
+            {/* Progress Visualization */}
+            <div className="glass-card p-6">
+              <h2 className="text-heading font-semibold text-text-primary mb-4">Weekly Goal Progress</h2>
+              <div className="flex justify-center">
+                <ProgressCircle
+                  value={Math.min(totalMinutes, 60)} // Example: 60 minutes weekly goal
+                  max={60}
+                  size={150}
+                  label="Weekly Goal"
+                  showValue={true}
+                />
+              </div>
+              <p className="text-center text-caption text-text-secondary mt-4">
+                {Math.round(totalMinutes)} of 60 minutes this week
+              </p>
+            </div>
+
+            {/* Recent Sessions */}
+            <div className="glass-card p-6">
+              <h2 className="text-heading font-semibold text-text-primary mb-4">Recent Sessions</h2>
+
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-body text-text-secondary">Loading your sessions...</p>
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-text-secondary mx-auto mb-4" />
+                  <p className="text-body text-text-secondary">No meditation sessions yet</p>
+                  <p className="text-caption text-text-secondary">Start your journey by creating your first AI meditation!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.slice(0, 5).map((session) => (
+                    <div key={session.sessionId} className="flex items-center justify-between p-3 bg-surface/20 rounded-lg">
+                      <div>
+                        <p className="text-body font-medium text-text-primary">
+                          {session.type === 'mood-based' ? 'AI Generated Meditation' : 'Custom Session'}
+                        </p>
+                        <p className="text-caption text-text-secondary">
+                          {new Date(session.createdAt).toLocaleDateString()} • {Math.round(session.duration / 60)} minutes
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {session.moodTags.map((tag) => (
+                          <span key={tag} className="px-2 py-1 bg-accent/20 text-accent text-xs rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppShell>
   );
 }
+
